@@ -1,6 +1,5 @@
 name: expense_tracker
-description: Personal Expense Tracker App with SQLite and Camera
-
+description: A modern expense tracking application with Firebase authentication
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,52 +9,47 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  
+
+  # State Management
+  provider: ^6.1.1
+
   # Database
   sqflite: ^2.3.0
   sqflite_common_ffi: ^2.3.0
-  sqflite_common_ffi_web: ^0.4.0
-  path_provider: ^2.1.1
+  sqflite_common_ffi_web: ^0.4.2+2
   path: ^1.8.3
-  
-  # State Management
-  provider: ^6.1.1
-  
-  # UI
+
+  # Firebase
+  firebase_core: ^3.0.0
+  firebase_auth: ^5.0.0
+  google_sign_in: ^6.1.6
+  cloud_firestore: ^5.0.0
+
+  # UI Components
   intl: ^0.18.1
-  fl_chart: ^0.65.0
-  
-  # Camera & Image
-  image_picker: ^1.0.4
-  google_mlkit_text_recognition: ^0.11.0
-  
-  # Export
-  csv: ^6.0.0
-  excel: ^4.0.0
-  share_plus: ^7.2.1
-  
-  # Cloud Backup
-  # firebase_core: ^3.0.0
-  # firebase_storage: ^12.0.0
-  # firebase_auth: ^5.0.0
-  
-  # Currency
+  fl_chart: ^0.66.0
   currency_picker: ^2.0.20
-  
-  # Notifications
-  flutter_local_notifications: ^16.3.0
-  
-  # Shared Preferences
+  image_picker: ^1.0.7
+
+  # File Handling
+  path_provider: ^2.1.1
+  share_plus: ^7.2.1
+  csv: ^5.1.1
+  excel: ^4.0.2
+
+  # Storage
   shared_preferences: ^2.2.2
-  
+
+  # OCR
+  google_mlkit_text_recognition: ^0.11.0
+
   # Icons
-  cupertino_icons: ^1.0.2
+  cupertino_icons: ^1.0.6
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.13.1
-  flutter_lints: ^3.0.0
+  flutter_lints: ^3.0.1
 
 flutter:
   uses-material-design: true
