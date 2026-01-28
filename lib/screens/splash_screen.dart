@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import '../providers/auth_provider.dart';
 import 'onboarding_screen.dart';
 import 'auth/login_screen.dart';
 import 'home_screen.dart';
@@ -52,17 +54,17 @@ class _SplashScreenState extends State<SplashScreen>
 
     final prefs = await SharedPreferences.getInstance();
     final hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
-    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     if (!mounted) return;
 
     Widget nextScreen;
     if (!hasSeenOnboarding) {
       nextScreen = const OnboardingScreen();
-    } else if (!isLoggedIn) {
-      nextScreen = const LoginScreen();
-    } else {
+    } else if (authProvider.isSignedIn) {
       nextScreen = const HomeScreen();
+    } else {
+      nextScreen = const LoginScreen();
     }
 
     Navigator.of(context).pushReplacement(

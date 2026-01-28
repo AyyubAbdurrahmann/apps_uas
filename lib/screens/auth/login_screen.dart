@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../providers/auth_provider.dart';
 import 'register_screen.dart';
 import '../home_screen.dart';
 
@@ -19,8 +20,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  // final FirebaseAuth _auth = FirebaseAuth.instance;
+  // final GoogleSignIn _googleSignIn = GoogleSignIn(
+  //   clientId: kIsWeb ? 'YOUR_WEB_CLIENT_ID' : null,
+  // );
 
   @override
   void dispose() {
@@ -35,9 +38,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.signInWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text,
       );
 
       final prefs = await SharedPreferences.getInstance();
@@ -48,26 +52,16 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
-    } on FirebaseAuthException catch (e) {
-      String message = 'An error occurred';
-
-      if (e.code == 'user-not-found') {
-        message = 'No user found with this email.';
-      } else if (e.code == 'wrong-password') {
-        message = 'Wrong password provided.';
-      } else if (e.code == 'invalid-email') {
-        message = 'Invalid email address.';
-      }
-
+    } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text('Login failed: $e'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(10))),
         ),
       );
     } finally {
@@ -81,20 +75,8 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      await _auth.signInWithCredential(credential);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.signInWithGoogle();
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
@@ -139,6 +121,8 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: SafeArea(
           child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -319,7 +303,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 24),
+                  // const SizedBox(height: 24),
 
                   // Google Sign In
                   SizedBox(
@@ -327,11 +311,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     height: 56,
                     child: OutlinedButton.icon(
                       onPressed: _isLoading ? null : _signInWithGoogle,
-                      icon: Image.network(
-                        'https://www.google.com/favicon.ico',
-                        width: 24,
-                        height: 24,
-                      ),
+                      icon: const Icon(Icons.g_mobiledata, size: 24),
                       label: const Text(
                         'Continue with Google',
                         style: TextStyle(
@@ -380,6 +360,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    )
     );
   }
 
@@ -418,9 +399,9 @@ class _LoginScreenState extends State<LoginScreen> {
           FilledButton(
             onPressed: () async {
               try {
-                await _auth.sendPasswordResetEmail(
-                  email: emailController.text.trim(),
-                );
+                // Simulate sending password reset email
+                await Future.delayed(const Duration(seconds: 1));
+                
                 if (!mounted) return;
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(

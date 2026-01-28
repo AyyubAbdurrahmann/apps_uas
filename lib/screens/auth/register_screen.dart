@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../providers/auth_provider.dart';
 import '../home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -22,8 +23,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscureConfirmPassword = true;
   bool _acceptedTerms = false;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  // final FirebaseAuth _auth = FirebaseAuth.instance;
+  // final GoogleSignIn _googleSignIn = GoogleSignIn(
+  //   clientId: kIsWeb ? 'YOUR_WEB_CLIENT_ID' : null,
+  // );
 
   @override
   void dispose() {
@@ -39,12 +42,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (!_acceptedTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please accept the terms and conditions'),
+        const SnackBar(
+          content: Text('Please accept the terms and conditions'),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(10))),
         ),
       );
       return;
@@ -53,13 +56,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      UserCredential userCredential =
-          await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.registerWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text,
+        _nameController.text.trim(),
       );
-
-      await userCredential.user?.updateDisplayName(_nameController.text.trim());
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
@@ -69,26 +71,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
-    } on FirebaseAuthException catch (e) {
-      String message = 'An error occurred';
-
-      if (e.code == 'weak-password') {
-        message = 'The password provided is too weak.';
-      } else if (e.code == 'email-already-in-use') {
-        message = 'An account already exists for that email.';
-      } else if (e.code == 'invalid-email') {
-        message = 'Invalid email address.';
-      }
-
+    } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text('Registration failed: $e'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(10))),
         ),
       );
     } finally {
@@ -102,20 +94,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      await _auth.signInWithCredential(credential);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.signInWithGoogle();
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
@@ -160,6 +140,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         child: SafeArea(
           child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -423,11 +405,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     height: 56,
                     child: OutlinedButton.icon(
                       onPressed: _isLoading ? null : _signInWithGoogle,
-                      icon: Image.network(
-                        'https://www.google.com/favicon.ico',
-                        width: 24,
-                        height: 24,
-                      ),
+                      icon: const Icon(Icons.g_mobiledata, size: 24),
                       label: const Text(
                         'Continue with Google',
                         style: TextStyle(
@@ -471,6 +449,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
+    )
     );
   }
 }

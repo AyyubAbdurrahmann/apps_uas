@@ -121,7 +121,7 @@ class ExportService {
     // Full data for restore
     for (var expense in expenses) {
       sheet.appendRow([
-        IntCellValue(expense.id ?? 0),
+        IntCellValue((expense.id ?? 0) as int),
         TextCellValue(expense.title),
         DoubleCellValue(expense.amount),
         TextCellValue(expense.currency),

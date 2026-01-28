@@ -1,5 +1,34 @@
+# This file controls the compilation and linking of the Flutter app's C++ code.
+# It is based on the Flutter Windows runner template.
+
 cmake_minimum_required(VERSION 3.14)
 project(runner LANGUAGES CXX)
+
+# === Firebase C++ SDK Compatibility Settings ===
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Force dynamic runtime library (required by Firebase)
+if(MSVC)
+    # Remove static runtime flags and replace with dynamic
+    string(REPLACE "/MT" "/MD" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+    string(REPLACE "/MTd" "/MDd" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    
+    # Set runtime library explicitly
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+    
+    # Add compatibility definitions for newer C++ features
+    add_compile_definitions(_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING)
+    add_compile_definitions(_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
+    add_compile_definitions(_SILENCE_CXX20_CISO646_REMOVED_WARNING)
+    
+    # Ensure proper C++ standard and exception handling
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17 /EHsc")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
+endif()
+# === End Firebase Compatibility Settings ===
 
 # Define the application target. To change its name, change BINARY_NAME in the
 # top-level CMakeLists.txt, not the value here, or `flutter run` will no longer
@@ -29,6 +58,9 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_BUILD=${FLUTT
 
 # Disable Windows macros that collide with C++ standard library functions.
 target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
+
+# Add custom compiler options for Windows
+target_compile_options(${BINARY_NAME} PRIVATE /W3 /wd"4996" /wd"4251")
 
 # Add dependency libraries and include directories. Add any application-specific
 # dependencies here.

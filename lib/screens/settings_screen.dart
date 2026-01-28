@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:currency_picker/currency_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/settings_provider.dart';
 import '../providers/expense_provider.dart';
 import '../services/export_service.dart';
 import '../services/backup_service.dart';
+import '../screens/auth/login_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -74,7 +76,13 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => _showBackupList(context),
           ),
           const Divider(),
-          _buildSectionHeader(context, 'About'),
+          _buildSectionHeader(context, 'Account'),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            subtitle: const Text('Sign out from your account'),
+            onTap: () => _logout(context),
+          ),
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('Version'),
@@ -292,5 +300,36 @@ class SettingsScreen extends StatelessWidget {
         const SnackBar(content: Text('Restore functionality coming soon')),
       );
     }
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('isLoggedIn', false);
+
+              if (context.mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
+            },
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
   }
 }

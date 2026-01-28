@@ -1,5 +1,5 @@
 class Expense {
-  final int? id;
+  final String? id;
   final String title;
   final double amount;
   final String category;
@@ -26,8 +26,7 @@ class Expense {
   });
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+    final map = {
       'title': title,
       'amount': amount,
       'category': category,
@@ -39,11 +38,15 @@ class Expense {
       'recurringType': recurringType,
       'nextRecurringDate': nextRecurringDate?.toIso8601String(),
     };
+    if (id != null) {
+      map['id'] = id;
+    }
+    return map;
   }
 
   factory Expense.fromMap(Map<String, dynamic> map) {
     return Expense(
-      id: map['id'] as int?,
+      id: map['id']?.toString(),
       title: map['title'] as String,
       amount: map['amount'] as double,
       category: map['category'] as String,
@@ -60,7 +63,7 @@ class Expense {
   }
 
   Expense copyWith({
-    int? id,
+    String? id,
     String? title,
     double? amount,
     String? category,

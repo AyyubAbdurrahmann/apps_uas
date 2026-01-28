@@ -2,6 +2,7 @@
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
+import '../providers/auth_provider.dart';
 import 'add_expense_screen.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
@@ -20,7 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final screens = [
       const ExpenseListScreen(),
-      const StatisticsScreen(),
+      StatisticsScreen(),
     ];
 
     return Scaffold(
@@ -65,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const AddExpenseScreen(),
+                    builder: (context) => AddExpenseScreen(),
                   ),
                 );
               },
@@ -136,6 +137,22 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
+                            Consumer<AuthProvider>(
+                              builder: (context, authProvider, child) {
+                                final userName =
+                                    authProvider.currentUser?.displayName ??
+                                        'User';
+                                return Text(
+                                  'Welcome back, $userName!',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 12),
                             Text(
                               'Total Balance',
                               style: TextStyle(
@@ -204,7 +221,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const SettingsScreen()),
+                            builder: (_) => SettingsScreen()),
                       );
                     },
                   ),
