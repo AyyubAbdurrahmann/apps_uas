@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import '../models/expense_model.dart';
 import '../providers/expense_provider.dart';
+import '../providers/settings_provider.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   final Expense? expense;
@@ -25,6 +26,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   String _selectedCategory = 'Food';
   DateTime _selectedDate = DateTime.now();
   String? _imagePath;
+  late String _currentCurrency;
+  late String _currentCurrencySymbol;
 
   final List<String> _categories = [
     'Food',
@@ -39,6 +42,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Get currency dari settings
+    final settingsProvider = context.read<SettingsProvider>();
+    _currentCurrency = settingsProvider.defaultCurrency;
+    _currentCurrencySymbol = settingsProvider.currencySymbol;
+
     if (widget.expense != null) {
       _titleController.text = widget.expense!.title;
       _amountController.text = widget.expense!.amount.toString();
@@ -46,6 +55,27 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _selectedCategory = widget.expense!.category;
       _selectedDate = widget.expense!.date;
       _imagePath = widget.expense!.imagePath;
+      // Set currency dari expense yang ada
+      _currentCurrency = widget.expense!.currency;
+      _currentCurrencySymbol = _getCurrencySymbol(widget.expense!.currency);
+    }
+  }
+
+  /// Get currency symbol berdasarkan currency code
+  String _getCurrencySymbol(String currencyCode) {
+    switch (currencyCode) {
+      case 'IDR':
+        return 'Rp ';
+      case 'USD':
+        return '\$ ';
+      case 'EUR':
+        return '€ ';
+      case 'GBP':
+        return '£ ';
+      case 'JPY':
+        return '¥ ';
+      default:
+        return '$currencyCode ';
     }
   }
 
@@ -120,6 +150,48 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
+  void _saveCurrencySelection(String currency) {
+    setState(() {
+      _currentCurrency = currency;
+      _currentCurrencySymbol = _getCurrencySymbol(currency);
+    });
+    Navigator.pop(context);
+  }
+
+  void _showCurrencyPicker() {
+    final currencies = [
+      {'code': 'IDR', 'name': 'Indonesian Rupiah', 'symbol': 'Rp '},
+      {'code': 'USD', 'name': 'US Dollar', 'symbol': '\$ '},
+      {'code': 'EUR', 'name': 'Euro', 'symbol': '€ '},
+      {'code': 'GBP', 'name': 'British Pound', 'symbol': '£ '},
+      {'code': 'JPY', 'name': 'Japanese Yen', 'symbol': '¥ '},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Currency'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: currencies.map((curr) {
+              final isSelected = _currentCurrency == curr['code'];
+              return ListTile(
+                title: Text(curr['name'] as String),
+                subtitle: Text(curr['code'] as String),
+                trailing: isSelected
+                    ? Icon(Icons.check,
+                        color: Theme.of(context).colorScheme.primary)
+                    : null,
+                onTap: () => _saveCurrencySelection(curr['code'] as String),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _saveExpense() async {
     if (_formKey.currentState!.validate()) {
       final expense = Expense(
@@ -132,6 +204,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             ? null
             : _descriptionController.text,
         imagePath: _imagePath,
+        currency: _currentCurrency, // Simpan currency yang dipilih
       );
 
       try {
@@ -192,27 +265,67 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               },
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _amountController,
-              decoration: const InputDecoration(
-                labelText: 'Amount',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.attach_money),
-                prefixText: 'Rp ',
-              ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+            // Amount field dengan currency selector
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: TextFormField(
+                    controller: _amountController,
+                    decoration: InputDecoration(
+                      labelText: 'Amount',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.attach_money),
+                      prefixText: _currentCurrencySymbol,
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                    ],
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter an amount';
+                      }
+                      if (double.tryParse(value) == null) {
+                        return 'Please enter a valid number';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 1,
+                  child: GestureDetector(
+                    onTap: _showCurrencyPicker,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.currency_exchange,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _currentCurrency,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter an amount';
-                }
-                if (double.tryParse(value) == null) {
-                  return 'Please enter a valid number';
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/settings_provider.dart';
+import '../utils/currency_helper.dart';
 import 'add_expense_screen.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
@@ -100,10 +102,22 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      body: Consumer<ExpenseProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
+      body: Consumer2<ExpenseProvider, SettingsProvider>(
+        builder: (context, expenseProvider, settingsProvider, child) {
+          if (expenseProvider.isLoading) {
             return const Center(child: CircularProgressIndicator());
+          }
+
+          // Calculate total dengan conversion ke currency settings
+          double totalInTargetCurrency = 0.0;
+          for (var expense in expenseProvider.expenses) {
+            // Convert setiap expense ke target currency
+            final convertedAmount = CurrencyHelper.convertCurrency(
+              expense.amount,
+              expense.currency,
+              settingsProvider.defaultCurrency,
+            );
+            totalInTargetCurrency += convertedAmount;
           }
 
           return CustomScrollView(
@@ -162,12 +176,12 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
+                            // Format total dengan auto-conversion
                             Text(
-                              NumberFormat.currency(
-                                locale: 'id_ID',
-                                symbol: 'Rp ',
-                                decimalDigits: 0,
-                              ).format(provider.totalExpenses),
+                              CurrencyHelper.formatCurrency(
+                                totalInTargetCurrency,
+                                settingsProvider.defaultCurrency,
+                              ),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 32,
@@ -196,7 +210,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        '${provider.expenses.length} transactions',
+                                        '${expenseProvider.expenses.length} transactions',
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 13,
@@ -220,8 +234,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (_) => SettingsScreen()),
+                        MaterialPageRoute(builder: (_) => SettingsScreen()),
                       );
                     },
                   ),
@@ -255,7 +268,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                                     icon: const Icon(Icons.clear_rounded),
                                     onPressed: () {
                                       _searchController.clear();
-                                      provider.setSearchQuery('');
+                                      expenseProvider.setSearchQuery('');
                                     },
                                   )
                                 : IconButton(
@@ -270,13 +283,13 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                                   ),
                           ),
                           onChanged: (value) {
-                            provider.setSearchQuery(value);
+                            expenseProvider.setSearchQuery(value);
                           },
                         ),
                       ),
                       if (_showFilters) ...[
                         const SizedBox(height: 16),
-                        _buildFilters(context, provider),
+                        _buildFilters(context, expenseProvider),
                       ],
                     ],
                   ),
@@ -284,7 +297,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
               ),
 
               // Expense List
-              provider.expenses.isEmpty
+              expenseProvider.expenses.isEmpty
                   ? SliverFillRemaining(
                       child: Center(
                         child: Column(
@@ -307,8 +320,8 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                             ),
                             const SizedBox(height: 24),
                             Text(
-                              provider.searchQuery.isNotEmpty ||
-                                      provider.filterCategory != null
+                              expenseProvider.searchQuery.isNotEmpty ||
+                                      expenseProvider.filterCategory != null
                                   ? 'No matching expenses'
                                   : 'No expenses yet',
                               style: TextStyle(
@@ -319,8 +332,8 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              provider.searchQuery.isNotEmpty ||
-                                      provider.filterCategory != null
+                              expenseProvider.searchQuery.isNotEmpty ||
+                                      expenseProvider.filterCategory != null
                                   ? 'Try adjusting your filters'
                                   : 'Start tracking your expenses',
                               style: TextStyle(
@@ -337,17 +350,19 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                       sliver: SliverList(
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
-                            final expense = provider.expenses[index];
+                            final expense = expenseProvider.expenses[index];
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: _ExpenseCard(
                                 expense: expense,
-                                onTap: () =>
-                                    _showExpenseDetails(context, expense),
+                                targetCurrency:
+                                    settingsProvider.defaultCurrency,
+                                onTap: () => _showExpenseDetails(context,
+                                    expense, settingsProvider.defaultCurrency),
                               ),
                             );
                           },
-                          childCount: provider.expenses.length,
+                          childCount: expenseProvider.expenses.length,
                         ),
                       ),
                     ),
@@ -485,7 +500,15 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     }
   }
 
-  void _showExpenseDetails(BuildContext context, expense) {
+  void _showExpenseDetails(
+      BuildContext context, expense, String targetCurrency) {
+    // Convert amount ke target currency untuk display
+    final convertedAmount = CurrencyHelper.convertCurrency(
+      expense.amount,
+      expense.currency,
+      targetCurrency,
+    );
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -581,14 +604,12 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                             ),
                           ),
                           const SizedBox(height: 4),
+                          // Display converted amount
                           Text(
-                            NumberFormat.currency(
-                              locale: 'id_ID',
-                              symbol: expense.currency == 'IDR'
-                                  ? 'Rp '
-                                  : '${expense.currency} ',
-                              decimalDigits: 0,
-                            ).format(expense.amount),
+                            CurrencyHelper.formatCurrency(
+                              convertedAmount,
+                              targetCurrency,
+                            ),
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.primary,
                               fontSize: 32,
@@ -596,6 +617,17 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                               letterSpacing: -1,
                             ),
                           ),
+                          const SizedBox(height: 8),
+                          // Show original amount
+                          if (expense.currency != targetCurrency)
+                            Text(
+                              'Original: ${CurrencyHelper.formatCurrency(expense.amount, expense.currency)}',
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -702,12 +734,24 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
 
 class _ExpenseCard extends StatelessWidget {
   final dynamic expense;
+  final String targetCurrency;
   final VoidCallback onTap;
 
-  const _ExpenseCard({required this.expense, required this.onTap});
+  const _ExpenseCard({
+    required this.expense,
+    required this.targetCurrency,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // Convert amount ke target currency
+    final convertedAmount = CurrencyHelper.convertCurrency(
+      expense.amount,
+      expense.currency,
+      targetCurrency,
+    );
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -786,14 +830,12 @@ class _ExpenseCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
+              // Display converted amount
               Text(
-                NumberFormat.currency(
-                  locale: 'id_ID',
-                  symbol: expense.currency == 'IDR'
-                      ? 'Rp '
-                      : '${expense.currency} ',
-                  decimalDigits: 0,
-                ).format(expense.amount),
+                CurrencyHelper.formatCurrency(
+                  convertedAmount,
+                  targetCurrency,
+                ),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
